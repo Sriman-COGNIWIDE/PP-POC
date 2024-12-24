@@ -7,7 +7,6 @@
   border: 1px solid #e2e8f0;
 }
 
-/* Custom Dropdown Styles */
 .custom-dropdown {
   position: relative;
   width: 200px;
@@ -82,7 +81,6 @@
   background-color: #f7fafc;
 }
 
-/* Search wrapper styles */
 .search-wrapper {
   margin-bottom: 20px;
   display: flex;
@@ -113,7 +111,6 @@
   font-size: 14px;
 }
 
-/* Filters wrapper styles */
 .filters-wrapper {
   display: flex;
   align-items: center;
@@ -121,7 +118,6 @@
   margin-bottom: 20px;
 }
 
-/* Table styles */
 table {
   width: 100%;
   border-collapse: separate;
@@ -178,7 +174,6 @@ tbody tr:nth-child(even) {
   background-color: #f8fafc;
 }
 
-/* Pagination styles */
 .pagination {
   display: flex;
   align-items: center;
@@ -236,7 +231,6 @@ tbody tr:nth-child(even) {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-/* Responsive styles */
 @media (max-width: 768px) {
   .table-container {
     margin: 16px;
@@ -314,7 +308,6 @@ tbody tr:nth-child(even) {
   z-index: 100;
 }
 
-/* Adjust dropdown widths to match the design */
 .dropdown-header {
   width: 200px;
   padding: 12px 16px;
@@ -327,7 +320,6 @@ tbody tr:nth-child(even) {
   align-items: center;
 }
 
-/* Make sure dropdowns appear above other content */
 .dropdown-content {
   position: absolute;
   top: 100%;
@@ -341,7 +333,6 @@ tbody tr:nth-child(even) {
   z-index: 1000;
 }
 
-/* Responsive adjustments */
 @media (max-width: 992px) {
   .filters-container {
       flex-direction: column;
