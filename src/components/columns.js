@@ -8,7 +8,7 @@ export const COLUMNS =[
         Header: 'NameSpace',
         Footer: 'NameSpace',
         accessor: 'namespace'
-    },
+    }, 
     {
         Header: 'Version',
         Footer: 'Version',

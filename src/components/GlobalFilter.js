@@ -9,11 +9,11 @@ export const GlobalFilter = ({ globalFilter, setGlobalFilter }) => {
     }, 300);
 
     useEffect(() => {
-        setValue(globalFilter || '');
+        setValue(globalFilter || ''); 
     }, [globalFilter]);
 
     return (
-        <div className="search-wrapper">
+        <div className="search-wrapper"> 
             <label htmlFor="search">Search:</label>
             <input
                 id="search"

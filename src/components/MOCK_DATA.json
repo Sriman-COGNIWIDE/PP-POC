@@ -197,4 +197,4 @@
 {"deployment-name":"AF","namespace":"RUB","version":57.12,"main-container-images":"Future-proofed","init-container-images":"secured line"},
 {"deployment-name":"AS","namespace":"CNY","version":63.68,"main-container-images":"hardware","init-container-images":"context-sensitive"},
 {"deployment-name":"AF","namespace":"AZN","version":40.81,"main-container-images":"mission-critical","init-container-images":"core"},
-{"deployment-name":"AS","namespace":"EUR","version":31.03,"main-container-images":"Vision-oriented","init-container-images":"bifurcated"}]
+{"deployment-name":"AS","namespace":"EUR","version":31.03,"main-container-images":"Vision-oriented","init-container-images":"bifurcated"}] 

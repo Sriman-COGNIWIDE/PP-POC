@@ -48,7 +48,7 @@ export const BasicTable = () => {
                 </tbody>
                 <tfoot>
                     {
-                        footerGroups.map(footerGroup => (
+                        footerGroups.map(footerGroup => ( 
                             <tr {...footerGroup.getFooterGroupProps}>
                                 {
                                     footerGroup.headers.map(column =>(

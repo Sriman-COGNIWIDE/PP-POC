@@ -13,7 +13,7 @@ export const SortingTable = () => {
         data
     },
     useSortBy)
-
+ 
     const { 
         getTableProps,
         getTableBodyProps, 

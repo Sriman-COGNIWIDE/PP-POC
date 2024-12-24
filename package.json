@@ -4,9 +4,11 @@
   "main": "index.js",
   "license": "MIT",
   "dependencies": {
+    "lucide-react": "^0.469.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-scripts": "^5.0.1",
+    "react-select": "^5.9.0",
     "react-table": "^7.8.0",
     "react-virtualized-select": "^3.1.3"
   },
