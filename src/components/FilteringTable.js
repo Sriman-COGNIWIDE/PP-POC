@@ -2,7 +2,78 @@ import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useTable, useSortBy, useGlobalFilter, usePagination } from 'react-table';
 import MOCK_DATA from './MOCK_DATA.json';
 import { COLUMNS } from './columns';
-import './table.css';
+
+const CustomDropdown = ({ 
+    isOpen, 
+    setIsOpen, 
+    options, 
+    value, 
+    onChange, 
+    searchValue, 
+    onSearchChange, 
+    placeholder,
+    dropdownRef 
+}) => {
+    const searchInputRef = useRef(null);
+
+    const handleSearchClick = (e) => {
+        e.stopPropagation();
+        if (searchInputRef.current) {
+            searchInputRef.current.focus();
+        }
+    };
+
+    return (
+        <div className="custom-dropdown" ref={dropdownRef}>
+            <div className="dropdown-header" onClick={() => setIsOpen(!isOpen)}>
+                <span>{value || `Select ${placeholder}`}</span>
+                <span className="dropdown-arrow">▼</span>
+            </div>
+            {isOpen && (
+                <div className="dropdown-panel">
+                    <div className="search-container" onClick={handleSearchClick}>
+                        <input
+                            ref={searchInputRef}
+                            type="text"
+                            value={searchValue}
+                            onChange={(e) => onSearchChange(e.target.value)}
+                            placeholder={`Search ${placeholder}...`}
+                            className="dropdown-search"
+                            onClick={(e) => e.stopPropagation()}
+                            onKeyDown={(e) => e.stopPropagation()}
+                        />
+                    </div>
+                    <div className="options-container">
+                        <div className="options-list">
+                            {options.map((option, index) => (
+                                <div
+                                    key={index}
+                                    className="option-item"
+                                    onClick={() => {
+                                        onChange(option);
+                                        setIsOpen(false);
+                                    }}
+                                >
+                                    {option}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+const CellWithLineBreaks = ({ value }) => {
+    if (typeof value !== 'string') return value;
+    return value.split(',').map((item, index) => (
+        <React.Fragment key={index}>
+            {index > 0 && <br />}
+            {item.trim()}
+        </React.Fragment>
+    ));
+};
 
 export const FilteringTable = () => {
     const columns = useMemo(() => COLUMNS, []);
@@ -25,6 +96,7 @@ export const FilteringTable = () => {
     const filteredEnvs = environments.filter(env => 
         env.toLowerCase().includes(envSearchInput.toLowerCase())
     );
+    
     const filteredClusters = clusters.filter(cluster => 
         cluster.toLowerCase().includes(clusterSearchInput.toLowerCase())
     );
@@ -58,59 +130,17 @@ export const FilteringTable = () => {
         setGlobalFilter,
         prepareRow
     } = useTable(
-        { columns, data, initialState: { pageSize } },
+        { 
+            columns, 
+            data, 
+            initialState: { pageSize },
+            defaultColumn: {
+                Cell: CellWithLineBreaks
+            }
+        },
         useGlobalFilter,
         useSortBy,
         usePagination
-    );
-
-    const CustomDropdown = ({ 
-        isOpen, 
-        setIsOpen, 
-        options, 
-        value, 
-        onChange, 
-        searchValue, 
-        onSearchChange, 
-        placeholder,
-        dropdownRef 
-    }) => (
-        <div className="custom-dropdown" ref={dropdownRef}>
-            <div className="dropdown-header" onClick={() => setIsOpen(!isOpen)}>
-                <span>{value || `Select ${placeholder}`}</span>
-                <span className="dropdown-arrow">▼</span>
-            </div>
-            {isOpen && (
-                <div className="dropdown-content">
-                    <input
-                        type="text"
-                        value={searchValue}
-                        onChange={(e) => onSearchChange(e.target.value)}
-                        placeholder={`Search ${placeholder}...`}
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setIsOpen(true);
-                        }}
-                        onKeyDown={(e) => e.stopPropagation()}
-                        className="dropdown-search"
-                    />
-                    <div className="options-list">
-                        {options.map((option, index) => (
-                            <div
-                                key={index}
-                                className="option-item"
-                                onClick={() => {
-                                    onChange(option);
-                                    setIsOpen(false);
-                                }}
-                            >
-                                {option}
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-        </div>
     );
 
     return (
