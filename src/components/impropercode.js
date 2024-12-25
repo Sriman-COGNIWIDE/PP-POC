@@ -1,3 +1,4 @@
+// FilteringTable.js
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useTable, useSortBy, useGlobalFilter, usePagination } from 'react-table';
 
@@ -297,4 +298,4 @@ function FilteringTable() {
     );
 }
 
-export default FilteringTable;
+export { FilteringTable };
