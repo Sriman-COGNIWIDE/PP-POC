@@ -1,7 +1,15 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
+import { useTable, useSortBy, useGlobalFilter, usePagination } from 'react-table';
 
 function CustomDropdown({ isOpen, setIsOpen, options, value, onChange, searchValue, onSearchChange, placeholder, dropdownRef }) {
     const searchInputRef = useRef(null);
+
+    const handleSearchClick = (e) => {
+        e.stopPropagation();
+        if (searchInputRef.current) {
+            searchInputRef.current.focus();
+        }
+    };
 
     return (
         <div className="custom-dropdown" ref={dropdownRef}>
@@ -11,7 +19,7 @@ function CustomDropdown({ isOpen, setIsOpen, options, value, onChange, searchVal
             </div>
             {isOpen && (
                 <div className="dropdown-panel">
-                    <div className="search-container">
+                    <div className="search-container" onClick={handleSearchClick}>
                         <input
                             ref={searchInputRef}
                             type="text"
@@ -20,6 +28,7 @@ function CustomDropdown({ isOpen, setIsOpen, options, value, onChange, searchVal
                             placeholder={`Search ${placeholder}...`}
                             className="dropdown-search"
                             onClick={(e) => e.stopPropagation()}
+                            onKeyDown={(e) => e.stopPropagation()}
                         />
                     </div>
                     <div className="options-container">
@@ -43,33 +52,25 @@ function CustomDropdown({ isOpen, setIsOpen, options, value, onChange, searchVal
 }
 
 function FilteringTable() {
-    // State for table data and loading
     const [data, setData] = useState([]);
+    const [filterInput, setFilterInput] = useState('');
+    const [pageSize] = useState(20);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-
-    // State for filtering and pagination
-    const [searchInput, setSearchInput] = useState('');
-    const [currentPage, setCurrentPage] = useState(1);
-    const rowsPerPage = 20;
-
-    // State for dropdowns
+    const [pageInput, setPageInput] = useState('');
+    const [envSearchInput, setEnvSearchInput] = useState('');
+    const [clusterSearchInput, setClusterSearchInput] = useState('');
     const [isEnvOpen, setIsEnvOpen] = useState(false);
     const [isClusterOpen, setIsClusterOpen] = useState(false);
     const [selectedEnv, setSelectedEnv] = useState('');
     const [selectedCluster, setSelectedCluster] = useState('');
-    const [envSearchInput, setEnvSearchInput] = useState('');
-    const [clusterSearchInput, setClusterSearchInput] = useState('');
 
-    // Refs for dropdown click outside handling
     const envRef = useRef(null);
     const clusterRef = useRef(null);
 
-    // Available options
     const environments = ['Dev', 'Lit', 'stg', 'CS stg', 'prod', 'cs prod'];
     const clusters = ['dev', 'lit', 'dev_corda', 'np_dmz', 'stg', 'stg_dmz', 'stg_corda', 'prod', 'prod_dmz', 'prod_corda', 'cslit', 'cslit_dmz', 'csstg', 'csstg_dmz', 'csprod'];
 
-    // Filter dropdown options based on search
     const filteredEnvs = environments.filter(env => 
         env.toLowerCase().includes(envSearchInput.toLowerCase())
     );
@@ -78,34 +79,42 @@ function FilteringTable() {
         cluster.toLowerCase().includes(clusterSearchInput.toLowerCase())
     );
 
-    // Fetch data from API
     const fetchData = async (cluster) => {
         if (!cluster) return;
-        
+    
         setLoading(true);
         setError(null);
-
+    
         try {
+            const requestBody = { env: cluster.toLowerCase() };
+            console.log('Sending request with body:', requestBody);
+    
             const response = await fetch(
                 'https://8k9nwttiw1.execute-api.eu-west-2.amazonaws.com/default/release-dashboard-api',
                 {
                     method: 'POST',
-                    mode: 'cors',
+                    mode: 'cors', 
                     credentials: 'include',
                     headers: {
                         'Content-Type': 'application/json',
                         'Accept': 'application/json',
                     },
-                    body: JSON.stringify({ env: cluster.toLowerCase() }),
+                    body: JSON.stringify(requestBody),
                 }
             );
-
+    
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                const errorData = await response.json();
+                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
             }
-
+    
             const responseData = await response.json();
-            
+            console.log('API Response:', responseData);
+    
+            if (!responseData || !Array.isArray(responseData)) {
+                throw new Error('Invalid response format');
+            }
+    
             const transformedData = responseData.map((item) => ({
                 deployment_name: item['deployment-name'] || '',
                 namespace: item.namespace || '',
@@ -116,24 +125,27 @@ function FilteringTable() {
                     ? item['init-container-images'].join(', ')
                     : item['init-container-images'] || '',
             }));
-
+    
             setData(transformedData);
         } catch (err) {
-            setError('Failed to fetch data');
+            console.error('Error details:', err);
+            setError(err.message || 'An error occurred while fetching data');
             setData([]);
         } finally {
             setLoading(false);
         }
     };
-
-    // Fetch data when cluster changes
+    
+    
+    const [lastAttemptedCluster, setLastAttemptedCluster] = useState('');
+    
     useEffect(() => {
-        if (selectedCluster) {
+        if (selectedCluster && selectedCluster !== lastAttemptedCluster) {
+            setLastAttemptedCluster(selectedCluster);
             fetchData(selectedCluster);
         }
-    }, [selectedCluster]);
-
-    // Handle click outside dropdowns
+    }, [selectedCluster, lastAttemptedCluster]);
+    
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (envRef.current && !envRef.current.contains(event.target)) {
@@ -148,17 +160,37 @@ function FilteringTable() {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    // Filter data based on search input
-    const filteredData = data.filter(row => 
-        Object.values(row).some(value => 
-            value.toLowerCase().includes(searchInput.toLowerCase())
-        )
-    );
+    const columns = useMemo(() => [
+        { Header: 'DEPLOYMENT NAME', accessor: 'deployment_name' },
+        { Header: 'NAMESPACE', accessor: 'namespace' },
+        { Header: 'MAIN CONTAINER IMAGES', accessor: 'main_container_images' },
+        { Header: 'SIDE CONTAINER IMAGES', accessor: 'side_container_images' }
+    ], []);
 
-    // Calculate pagination
-    const totalPages = Math.ceil(filteredData.length / rowsPerPage);
-    const startIndex = (currentPage - 1) * rowsPerPage;
-    const paginatedData = filteredData.slice(startIndex, startIndex + rowsPerPage);
+    const {
+        getTableProps,
+        getTableBodyProps,
+        headerGroups,
+        page,
+        nextPage,
+        previousPage,
+        canNextPage,
+        canPreviousPage,
+        gotoPage,
+        pageCount,
+        state: { pageIndex },
+        setGlobalFilter,
+        prepareRow
+    } = useTable(
+        { 
+            columns, 
+            data, 
+            initialState: { pageSize }
+        },
+        useGlobalFilter,
+        useSortBy,
+        usePagination
+    );
 
     return (
         <div className="table-container">
@@ -188,39 +220,59 @@ function FilteringTable() {
                     />
                 </div>
                 <div className="search-wrapper">
+                    <label htmlFor="search">Search Records:</label>
                     <input
+                        id="search"
                         type="text"
-                        value={searchInput}
-                        onChange={(e) => setSearchInput(e.target.value)}
-                        placeholder="Search records..."
+                        value={filterInput}
+                        onChange={(e) => {
+                            setFilterInput(e.target.value);
+                            setGlobalFilter(e.target.value || undefined);
+                        }}
+                        placeholder="Filter records..."
                         className="search-input"
                     />
                 </div>
             </div>
 
-            {loading && <div className="loading-message">Loading data...</div>}
-            {error && <div className="error-message">{error}</div>}
+            {loading && (
+                <div className="loading-message">Loading data...</div>
+            )}
+
+            {error && (
+                <div className="error-message">{error}</div>
+            )}
 
             <div className="table-wrapper">
-                <table className="data-table">
+                <table {...getTableProps()} className="data-table">
                     <thead>
-                        <tr>
-                            <th>DEPLOYMENT NAME</th>
-                            <th>NAMESPACE</th>
-                            <th>MAIN CONTAINER IMAGES</th>
-                            <th>SIDE CONTAINER IMAGES</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {paginatedData.map((row, index) => (
-                            <tr key={index}>
-                                <td>{row.deployment_name}</td>
-                                <td>{row.namespace}</td>
-                                <td>{row.main_container_images}</td>
-                                <td>{row.side_container_images}</td>
+                        {headerGroups.map((headerGroup) => (
+                            <tr {...headerGroup.getHeaderGroupProps()}>
+                                {headerGroup.headers.map(column => (
+                                    <th {...column.getHeaderProps(column.getSortByToggleProps())}>
+                                        {column.render('Header')}
+                                        <span>
+                                            {column.isSorted ? (column.isSortedDesc ? ' 🔽' : ' 🔼') : ''}
+                                        </span>
+                                    </th>
+                                ))}
                             </tr>
                         ))}
-                        {!loading && paginatedData.length === 0 && (
+                    </thead>
+                    <tbody {...getTableBodyProps()}>
+                        {page.map((row) => {
+                            prepareRow(row);
+                            return (
+                                <tr {...row.getRowProps()}>
+                                    {row.cells.map(cell => (
+                                        <td {...cell.getCellProps()}>
+                                            {cell.value}
+                                        </td>
+                                    ))}
+                                </tr>
+                            );
+                        })}
+                        {!loading && page.length === 0 && (
                             <tr>
                                 <td colSpan={4} className="no-data">
                                     No data available
@@ -232,33 +284,51 @@ function FilteringTable() {
             </div>
 
             <div className="pagination">
+                <span className="pagination-info">
+                    <strong>Page {pageIndex + 1} of {pageCount}</strong>
+                </span>
+                <span className="pagination-goto">
+                    <strong>Go to page:</strong>
+                    <input
+                        type="number"
+                        value={pageInput}
+                        onChange={(e) => setPageInput(e.target.value)}
+                        onKeyPress={(e) => {
+                            if (e.key === 'Enter') {
+                                const pageNumber = parseInt(pageInput, 10);
+                                if (pageNumber > 0 && pageNumber <= pageCount) {
+                                    gotoPage(pageNumber - 1);
+                                }
+                            }
+                        }}
+                        min="1"
+                        max={pageCount}
+                    />
+                </span>
                 <button
-                    onClick={() => setCurrentPage(1)}
-                    disabled={currentPage === 1}
+                    onClick={() => gotoPage(0)}
+                    disabled={!canPreviousPage}
                     className="pagination-button"
                 >
                     {"<<"}
                 </button>
                 <button
-                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                    disabled={currentPage === 1}
+                    onClick={() => previousPage()}
+                    disabled={!canPreviousPage}
                     className="pagination-button"
                 >
                     Previous
                 </button>
-                <span>
-                    Page {currentPage} of {totalPages || 1}
-                </span>
                 <button
-                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                    disabled={currentPage === totalPages}
+                    onClick={() => nextPage()}
+                    disabled={!canNextPage}
                     className="pagination-button"
                 >
                     Next
                 </button>
                 <button
-                    onClick={() => setCurrentPage(totalPages)}
-                    disabled={currentPage === totalPages}
+                    onClick={() => gotoPage(pageCount - 1)}
+                    disabled={!canNextPage}
                     className="pagination-button"
                 >
                     {">>"}
