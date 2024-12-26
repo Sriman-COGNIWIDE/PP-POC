@@ -10,11 +10,6 @@ export const COLUMNS =[
         accessor: 'namespace'
     }, 
     {
-        Header: 'Version',
-        Footer: 'Version',
-        accessor: 'version'
-    },
-    {
         Header: 'Main Container Images',
         Footer: 'Main Container Images',
         accessor: 'main-container-images'

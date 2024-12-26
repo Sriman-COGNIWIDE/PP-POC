@@ -3,7 +3,7 @@ import { useTable, useSortBy, useGlobalFilter, usePagination } from 'react-table
 
 function CustomDropdown({ isOpen, setIsOpen, options, value, onChange, searchValue, onSearchChange, placeholder, dropdownRef }) {
     const searchInputRef = useRef(null);
-    
+
     const handleSearchClick = (e) => {
         e.stopPropagation();
         if (searchInputRef.current) {
@@ -64,7 +64,7 @@ function FilteringTable() {
     const [isClusterOpen, setIsClusterOpen] = useState(false);
     const [selectedEnv, setSelectedEnv] = useState('');
     const [selectedCluster, setSelectedCluster] = useState('');
-    
+
     const envRef = useRef(null);
     const clusterRef = useRef(null);
 
@@ -79,53 +79,73 @@ function FilteringTable() {
         cluster.toLowerCase().includes(clusterSearchInput.toLowerCase())
     );
 
-    const fetchData = async (selectedCluster) => {
-        if (!selectedCluster) return;
-        
+    const fetchData = async (cluster) => {
+        if (!cluster) return;
+    
         setLoading(true);
         setError(null);
-        
+    
         try {
-            const response = await fetch('https://8k9nwttiw1.execute-api.eu-west-2.amazonaws.com/default/release-dashboard-api', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ env: selectedCluster.toLowerCase() })
-            });
-            
+            const requestBody = { env: cluster.toLowerCase() };
+            console.log('Sending request with body:', requestBody);
+    
+            const response = await fetch(
+                'https://8k9nwttiw1.execute-api.eu-west-2.amazonaws.com/default/release-dashboard-api',
+                {
+                    method: 'POST',
+                    mode: 'cors', 
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify(requestBody),
+                }
+            );
+    
             if (!response.ok) {
-                throw new Error('Network response was not ok');
+                const errorData = await response.json();
+                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
             }
-            
-            const result = await response.json();
-            
-            const transformedData = result.map(item => ({
+    
+            const responseData = await response.json();
+            console.log('API Response:', responseData);
+    
+            if (!responseData || !Array.isArray(responseData)) {
+                throw new Error('Invalid response format');
+            }
+    
+            const transformedData = responseData.map((item) => ({
                 deployment_name: item['deployment-name'] || '',
-                namespace: item['namespace'] || '',
-                version: item['version'] || '1.0',
-                main_container_images: Array.isArray(item['main-container-images']) ? 
-                    item['main-container-images'].join(', ') : 
-                    item['main-container-images'] || '',
-                side_container_images: Array.isArray(item['init-container-images']) ? 
-                    item['init-container-images'].join(', ') : 
-                    item['init-container-images'] || ''
+                namespace: item.namespace || '',
+                main_container_images: Array.isArray(item['main-container-images'])
+                    ? item['main-container-images'].join(', ')
+                    : item['main-container-images'] || '',
+                side_container_images: Array.isArray(item['init-container-images'])
+                    ? item['init-container-images'].join(', ')
+                    : item['init-container-images'] || '',
             }));
-            
+    
             setData(transformedData);
         } catch (err) {
-            console.error('Error fetching data:', err);
-            setError('Failed to fetch data. Please try again.');
+            console.error('Error details:', err);
+            setError(err.message || 'An error occurred while fetching data');
             setData([]);
         } finally {
             setLoading(false);
         }
     };
-
+    
+    
+    const [lastAttemptedCluster, setLastAttemptedCluster] = useState('');
+    
     useEffect(() => {
-        fetchData(selectedCluster);
-    }, [selectedCluster]);
-
+        if (selectedCluster && selectedCluster !== lastAttemptedCluster) {
+            setLastAttemptedCluster(selectedCluster);
+            fetchData(selectedCluster);
+        }
+    }, [selectedCluster, lastAttemptedCluster]);
+    
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (envRef.current && !envRef.current.contains(event.target)) {
@@ -143,7 +163,6 @@ function FilteringTable() {
     const columns = useMemo(() => [
         { Header: 'DEPLOYMENT NAME', accessor: 'deployment_name' },
         { Header: 'NAMESPACE', accessor: 'namespace' },
-        { Header: 'VERSION', accessor: 'version' },
         { Header: 'MAIN CONTAINER IMAGES', accessor: 'main_container_images' },
         { Header: 'SIDE CONTAINER IMAGES', accessor: 'side_container_images' }
     ], []);
@@ -255,7 +274,7 @@ function FilteringTable() {
                         })}
                         {!loading && page.length === 0 && (
                             <tr>
-                                <td colSpan={5} className="no-data">
+                                <td colSpan={4} className="no-data">
                                     No data available
                                 </td>
                             </tr>
@@ -265,33 +284,55 @@ function FilteringTable() {
             </div>
 
             <div className="pagination">
-                <div className="pagination-info">
+                <span className="pagination-info">
                     <strong>Page {pageIndex + 1} of {pageCount}</strong>
-                </div>
-                <div className="pagination-controls">
-                    <div className="pagination-goto">
-                        <strong>Go to page:</strong>
-                        <input
-                            type="number"
-                            value={pageInput}
-                            onChange={(e) => setPageInput(e.target.value)}
-                            onKeyPress={(e) => {
-                                if (e.key === 'Enter') {
-                                    const pageNumber = parseInt(pageInput, 10);
-                                    if (pageNumber > 0 && pageNumber <= pageCount) {
-                                        gotoPage(pageNumber - 1);
-                                    }
+                </span>
+                <span className="pagination-goto">
+                    <strong>Go to page:</strong>
+                    <input
+                        type="number"
+                        value={pageInput}
+                        onChange={(e) => setPageInput(e.target.value)}
+                        onKeyPress={(e) => {
+                            if (e.key === 'Enter') {
+                                const pageNumber = parseInt(pageInput, 10);
+                                if (pageNumber > 0 && pageNumber <= pageCount) {
+                                    gotoPage(pageNumber - 1);
                                 }
-                            }}
-                            min="1"
-                            max={pageCount}
-                        />
-                    </div>
-                    <button onClick={() => gotoPage(0)} disabled={!canPreviousPage} className="pagination-button">{"<<"}</button>
-                    <button onClick={() => previousPage()} disabled={!canPreviousPage} className="pagination-button">Previous</button>
-                    <button onClick={() => nextPage()} disabled={!canNextPage} className="pagination-button">Next</button>
-                    <button onClick={() => gotoPage(pageCount - 1)} disabled={!canNextPage} className="pagination-button">{">>"}</button>
-                </div>
+                            }
+                        }}
+                        min="1"
+                        max={pageCount}
+                    />
+                </span>
+                <button
+                    onClick={() => gotoPage(0)}
+                    disabled={!canPreviousPage}
+                    className="pagination-button"
+                >
+                    {"<<"}
+                </button>
+                <button
+                    onClick={() => previousPage()}
+                    disabled={!canPreviousPage}
+                    className="pagination-button"
+                >
+                    Previous
+                </button>
+                <button
+                    onClick={() => nextPage()}
+                    disabled={!canNextPage}
+                    className="pagination-button"
+                >
+                    Next
+                </button>
+                <button
+                    onClick={() => gotoPage(pageCount - 1)}
+                    disabled={!canNextPage}
+                    className="pagination-button"
+                >
+                    {">>"}
+                </button>
             </div>
         </div>
     );
